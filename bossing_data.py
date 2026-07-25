@@ -1,5 +1,3 @@
-# bossing_data.py
-# Rates (PKR, USD-string). USD shown per unit or as given.
 BOSSING_RATES = {
     "Slayer": {
         "Grotesque Guardians": (12.5, "$0.04"),
@@ -32,8 +30,8 @@ BOSSING_RATES = {
         "Nightmare Solo": (200, "$0.71"),
         "Nightmare FFA": (75, "$0.27"),
         "Zalcano (per KC, 3-5 man)": (22.5, "$0.08"),
-        "God Wars Dungeon (quote)": (0, "$0.00"),  # quote -> 0 indicates open ticket for price
-        "Firecape - Main/Zerker": (1868, "$6.58"),  # included here since you prefer Bossing
+        "God Wars Dungeon (quote)": (0, "$0.00"),  
+        "Firecape - Main/Zerker": (1868, "$6.58"),  
         "Firecape - Pure": (4290, "$15.12"),
         "Firecape - Ironman (Main)": (1841, "$6.49"),
     },
