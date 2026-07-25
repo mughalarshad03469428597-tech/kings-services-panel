@@ -92,26 +92,21 @@
                 if (!response.ok) throw new Error("File load nahi ho saki!");
                 let text = await response.text();
 
-                // Remove Python comments (# ...) so they don't cause parsing errors
-                text = text.replace(/#.*$/gm, '');
-
+                // Extract dictionary name and content safely
                 let match = text.match(/([a-zA-Z0-9_]+)\s*=\s*(\{[\s\S]*\})/);
                 if (match) {
                     dictName = match[1];
                     text = match[2];
                 }
 
-                let jsFriendly = text
+                // Safely evaluate python dictionary structure using Function wrapper
+                let cleanText = text
+                    .replace(/#.*$/gm, '') // Remove comments
                     .replace(/\bTrue\b/g, 'true')
                     .replace(/\bFalse\b/g, 'false')
-                    .replace(/\bNone\b/g, 'null')
-                    .replace(/'/g, '"')
-                    .replace(/\(/g, '[')
-                    .replace(/\)/g, ']');
+                    .replace(/\bNone\b/g, 'null');
 
-                jsFriendly = jsFriendly.replace(/,\s*([}\\]])/g, '$1');
-
-                currentData = JSON.parse(jsFriendly);
+                currentData = (new Function("return " + cleanText))();
                 renderTable();
                 alert(filename + " successfully load ho gayi!");
             } catch (e) {
