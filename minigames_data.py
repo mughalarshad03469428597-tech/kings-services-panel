@@ -1,5 +1,3 @@
-# ---------------- Minigames Price Data ----------------
-
 MINIGAMES_RATES = {
     # ⚔️ Pest Control
     "Pest Control - Novice": (2, "$0.007"),
