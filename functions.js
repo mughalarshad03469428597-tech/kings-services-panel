@@ -1,3 +1,9 @@
+/* ==========================================
+   Project: Multi-File Admin Panel
+   File: functions.js
+   Version: 0.1
+   ========================================== */
+
 let currentData = {};
 let dictName = "DATA";
 let currentFileName = "";
@@ -18,7 +24,6 @@ function clearConsole() {
     }
 }
 
-// Override standard clicks to log into console
 document.addEventListener('click', function(event) {
     let target = event.target;
     if (target.tagName === 'BUTTON' || target.tagName === 'INPUT' || target.tagName === 'SELECT') {
@@ -104,7 +109,9 @@ async function loadSelectedFile() {
             }
         }
 
-        let cleanText = text
+        let convertedText = text.replace(/\(/g, '[').replace(/\)/g, ']');
+
+        let cleanText = convertedText
             .replace(/#.*$/gm, '')
             .replace(/["']{3}[\s\S]*?["']{3}/g, '')
             .replace(/\bTrue\b/g, 'true')
@@ -159,7 +166,27 @@ function renderTable() {
     let hasData = false;
 
     for (let sec in currentData) {
-        for (let item in currentData[sec]) {
+        let secContent = currentData[sec];
+        
+        if (typeof secContent !== 'object' || secContent === null) {
+            let valStr = String(secContent);
+            if (searchQuery && !sec.toLowerCase().includes(searchQuery) && !valStr.toLowerCase().includes(searchQuery)) {
+                continue;
+            }
+            hasData = true;
+            let tr = document.createElement('tr');
+            tr.innerHTML = `<td><b>${sec}</b></td>
+                            <td>-</td>
+                            <td>${valStr}</td>
+                            <td>
+                                <button class="edit-btn" onclick="editItem('${sec.replace(/'/g, "\\'")}', '', \`${valStr}\`)">Edit</button>
+                                <button class="delete-btn" onclick="deleteItem('${sec.replace(/'/g, "\\'")}', '')">Delete</button>
+                            </td>`;
+            tbody.appendChild(tr);
+            continue;
+        }
+
+        for (let item in secContent) {
             let itemStr = String(item).toLowerCase();
             let secStr = String(sec).toLowerCase();
 
@@ -168,7 +195,7 @@ function renderTable() {
             }
 
             hasData = true;
-            let val = currentData[sec][item];
+            let val = secContent[item];
             let displayRate = "";
             if (val !== null && val !== undefined) {
                 displayRate = Array.isArray(val) ? `(${val.map(v => typeof v === 'string' ? `"${v}"` : v).join(', ')})` : JSON.stringify(val);
@@ -228,42 +255,50 @@ function saveItem() {
     let rateVal = document.getElementById('itemRate').value.trim();
     let editingJson = document.getElementById('editingOldItem').value;
 
-    if (!sec || !item) {
-        alert("Section and Item name cannot be empty!");
+    if (!sec) {
+        alert("Section name cannot be empty!");
         return;
     }
 
     if (editingJson) {
         let oldData = JSON.parse(editingJson);
-        if (currentData[oldData.sec] && currentData[oldData.sec][oldData.item] !== undefined) {
-            delete currentData[oldData.sec][oldData.item];
-            if (Object.keys(currentData[oldData.sec]).length === 0) {
+        if (currentData[oldData.sec]) {
+            if (oldData.item !== "") {
+                if (currentData[oldData.sec][oldData.item] !== undefined) {
+                    delete currentData[oldData.sec][oldData.item];
+                    if (Object.keys(currentData[oldData.sec]).length === 0) {
+                        delete currentData[oldData.sec];
+                    }
+                }
+            } else {
                 delete currentData[oldData.sec];
             }
         }
     }
 
-    if (!currentData[sec]) {
-        currentData[sec] = {};
-    }
-
-    if (rateVal === "") {
-        currentData[sec][item] = "";
-    } else {
+    let parsedVal = rateVal;
+    if (rateVal !== "") {
         try {
-            let parsed;
             if (rateVal.startsWith('[') && rateVal.endsWith(']')) {
-                parsed = JSON.parse(rateVal);
+                parsedVal = JSON.parse(rateVal);
             } else if (rateVal.startsWith('(') && rateVal.endsWith(')')) {
                 let inner = rateVal.substring(1, rateVal.length - 1);
-                parsed = JSON.parse('[' + inner + ']');
+                parsedVal = JSON.parse('[' + inner + ']');
             } else {
-                parsed = isNaN(rateVal) ? rateVal.replace(/^["']|["']$/g, '') : Number(rateVal);
+                parsedVal = isNaN(rateVal) ? rateVal.replace(/^["']|["']$/g, '') : Number(rateVal);
             }
-            currentData[sec][item] = parsed;
         } catch (e) {
-            currentData[sec][item] = rateVal;
+            parsedVal = rateVal;
         }
+    }
+
+    if (item === "") {
+        currentData[sec] = parsedVal;
+    } else {
+        if (typeof currentData[sec] !== 'object' || Array.isArray(currentData[sec]) || currentData[sec] === null) {
+            currentData[sec] = {};
+        }
+        currentData[sec][item] = parsedVal;
     }
 
     updateSectionDropdown();
@@ -274,37 +309,47 @@ function saveItem() {
 }
 
 function deleteItem(sec, item) {
-    if (confirm(`Are you sure you want to delete ${item}?`)) {
-        delete currentData[sec][item];
-        if (Object.keys(currentData[sec]).length === 0) {
+    if (confirm(`Are you sure you want to delete?`)) {
+        if (item !== "") {
+            delete currentData[sec][item];
+            if (Object.keys(currentData[sec]).length === 0) {
+                delete currentData[sec];
+            }
+        } else {
             delete currentData[sec];
         }
         updateSectionDropdown();
         renderTable();
-        logConsole(`Deleted item: ${item} from ${sec}`);
+        logConsole(`Deleted from ${sec}`);
     }
 }
 
 function generateCode() {
     let output = dictName + " = {\n";
     for (let sec in currentData) {
-        output += `    '${sec}': {\n`;
-        for (let item in currentData[sec]) {
-            let val = currentData[sec][item];
-            let valStr = "";
-            if (val === "" || val === null || val === undefined) {
-                valStr = "''";
-            } else if (Array.isArray(val)) {
-                let innerVals = val.map(v => typeof v === 'string' ? `'${v}'` : v).join(', ');
-                valStr = `(${innerVals})`;
-            } else if (typeof val === 'string') {
-                valStr = `'${val}'`;
-            } else {
-                valStr = val;
+        let secContent = currentData[sec];
+        if (typeof secContent !== 'object' || secContent === null) {
+            let valStr = typeof secContent === 'string' ? `'${secContent}'` : secContent;
+            output += `    '${sec}': ${valStr},\n`;
+        } else {
+            output += `    '${sec}': {\n`;
+            for (let item in secContent) {
+                let val = secContent[item];
+                let valStr = "";
+                if (val === "" || val === null || val === undefined) {
+                    valStr = "''";
+                } else if (Array.isArray(val)) {
+                    let innerVals = val.map(v => typeof v === 'string' ? `'${v}'` : v).join(', ');
+                    valStr = `(${innerVals})`;
+                } else if (typeof val === 'string') {
+                    valStr = `'${val}'`;
+                } else {
+                    valStr = val;
+                }
+                output += `        '${item}': ${valStr},\n`;
             }
-            output += `        '${item}': ${valStr},\n`;
+            output += `    },\n`;
         }
-        output += `    },\n`;
     }
     output += "}\n";
     document.getElementById('rawOutput').value = output;
