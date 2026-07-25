@@ -2,15 +2,15 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>King's Services - Static HTML Admin Panel</title>
+    <title>King's Services - Multi-File Admin Panel</title>
     <style>
         body { font-family: Arial, sans-serif; background: #121212; color: #e0e0e0; margin: 0; padding: 20px; }
-        h1, h2 { color: #ffffff; }
+        h1, h2, h3 { color: #ffffff; }
         .container { max-width: 1100px; margin: auto; background: #1e1e1e; padding: 20px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
         table { width: 100%; border-collapse: collapse; margin-top: 15px; }
         th, td { padding: 10px; border: 1px solid #333; text-align: left; }
         th { background: #2c2c2c; }
-        input[type="text"], textarea { padding: 8px; width: 100%; background: #2d2d2d; border: 1px solid #444; color: #fff; border-radius: 4px; box-sizing: border-box; margin-top: 5px; }
+        input[type="text"], select { padding: 8px; width: 100%; background: #2d2d2d; border: 1px solid #444; color: #fff; border-radius: 4px; box-sizing: border-box; margin-top: 5px; }
         button { padding: 8px 14px; background: #6200ee; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 4px; }
         button:hover { background: #3700b3; }
         .edit-btn { background: #03dac6; color: #000; font-weight: bold; }
@@ -21,13 +21,18 @@
 </head>
 <body>
     <div class="container">
-        <h1>👑 King's Services - Static HTML Editor</h1>
+        <h1>👑 King's Services - Multi-File Panel</h1>
         
         <div class="box">
-            <h3>1. Load Data File</h3>
-            <p style="font-size: 13px; color: #bbb;">Apni data file ka poora code yahan paste karein aur Load dabayein:</p>
-            <textarea id="rawInput" rows="6" placeholder="BOSSING_RATES = { ... }"></textarea>
-            <button onclick="loadData()" style="margin-top: 10px; background: #ff9800; color: #000; font-weight: bold;">Load Data</button>
+            <h3>1. Select Data File</h3>
+            <p style="font-size: 13px; color: #bbb;">Apni file select karein taake data load ho jaye:</p>
+            <select id="fileSelector" onchange="loadSelectedFile()">
+                <option value="">-- Choose File --</option>
+                <option value="bossing_data.py">bossing_data.py</option>
+                <option value="leveling_data.py">leveling_data.py</option>
+                <option value="minigames_data.py">minigames_data.py</option>
+                <option value="quest_panel.py">quest_panel.py</option>
+            </select>
         </div>
 
         <div class="box">
@@ -44,7 +49,7 @@
                 <label>Rate / Details:</label>
                 <input type="text" id="itemRate" placeholder="e.g., (10, '$0.04') or '$5.00'">
             </div>
-            <button onclick="saveItem()">Save / Update Item</button>
+            <button onclick="saveItem()">Save / Update Item Locally</button>
         </div>
 
         <div class="box">
@@ -59,51 +64,55 @@
                     </tr>
                 </thead>
                 <tbody id="tableBody">
-                    <tr><td colspan="4" style="text-align:center; color:#ff6b6b;">No data loaded yet.</td></tr>
+                    <tr><td colspan="4" style="text-align:center; color:#ff6b6b;">Please select a file above.</td></tr>
                 </tbody>
             </table>
         </div>
 
         <div class="box" style="border: 1px solid #4caf50;">
-            <h3>4. Export Updated Code for GitHub</h3>
-            <p style="font-size: 13px; color: #bbb;">Changes karne ke baad neeche generate button dabayein, phir code copy karke apni file mein replace kar dein:</p>
+            <h3>4. Export Updated Code</h3>
+            <p style="font-size: 13px; color: #bbb;">Changes karne ke baad neeche generate button dabayein, phir code copy karke GitHub par apni file mein paste kar dein:</p>
             <button class="save-file-btn" onclick="generateCode()">Generate Updated Code</button>
-            <textarea id="rawOutput" rows="8" placeholder="Updated code will appear here..." style="margin-top: 10px;" readonly></textarea>
+            <textarea id="rawOutput" rows="8" placeholder="Updated code will appear here..." style="width:100%; margin-top: 10px; background: #2d2d2d; color: #fff; border: 1px solid #444; padding:8px; border-radius:4px;" readonly></textarea>
         </div>
     </div>
 
     <script>
         let currentData = {};
         let dictName = "DATA";
+        let currentFileName = "";
 
-        function loadData() {
-            let text = document.getElementById('rawInput').value.trim();
+        async function loadSelectedFile() {
+            let filename = document.getElementById('fileSelector').value;
+            if (!filename) return;
+            currentFileName = filename;
+
             try {
+                let response = await fetch(filename + "?t=" + new Date().getTime());
+                if (!response.ok) throw new Error("File load nahi ho saki!");
+                let text = await response.text();
+
                 let match = text.match(/^([a-zA-Z0-9_]+)\s*=\s*(\{[\s\S]*\})$/);
                 if (match) {
                     dictName = match[1];
                     text = match[2];
                 }
 
-                // Custom safe parser for Python dictionaries containing tuples/parentheses
                 let jsFriendly = text
                     .replace(/True/g, 'true')
                     .replace(/False/g, 'false')
                     .replace(/None/g, 'null')
-                    // Replace Python single quotes with double quotes carefully
-                    .replace(/'/g, '"');
+                    .replace(/'/g, '"')
+                    .replace(/\(/g, '[')
+                    .replace(/\)/g, ']');
 
-                // Convert tuples (...) to arrays [...] so JSON.parse can read them
-                jsFriendly = jsFriendly.replace(/\(/g, '[').replace(/\)/g, ']');
-                
-                // Remove trailing commas before closing braces/brackets
                 jsFriendly = jsFriendly.replace(/,\s*([}\\]])/g, '$1');
 
                 currentData = JSON.parse(jsFriendly);
                 renderTable();
-                alert("Data loaded successfully!");
+                alert(filename + " successfully load ho gayi!");
             } catch (e) {
-                alert("Error parsing data: " + e.message);
+                alert("Error loading file: " + e.message);
             }
         }
 
