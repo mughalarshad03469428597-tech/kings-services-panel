@@ -1,7 +1,7 @@
 /* ==========================================
    Project: Multi-File Admin Panel
    File: functions.js
-   Version: 0.1
+   Version: 0.3
    ========================================== */
 
 let currentData = {};
@@ -197,8 +197,15 @@ function renderTable() {
             hasData = true;
             let val = secContent[item];
             let displayRate = "";
+            
             if (val !== null && val !== undefined) {
-                displayRate = Array.isArray(val) ? `(${val.map(v => typeof v === 'string' ? `"${v}"` : v).join(', ')})` : JSON.stringify(val);
+                if (Array.isArray(val)) {
+                    displayRate = val.map(v => typeof v === 'string' ? v : v).join(', ');
+                } else if (typeof val === 'string') {
+                    displayRate = val;
+                } else {
+                    displayRate = val;
+                }
             }
 
             let tr = document.createElement('tr');
@@ -215,6 +222,102 @@ function renderTable() {
     if (!hasData) {
         tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:#ff6b6b;">No matching items found.</td></tr>`;
     }
+}
+
+// Helper function to inject Stepper / Arrow controls next to Rate field dynamically
+function setupRateControls() {
+    let rateInput = document.getElementById('itemRate');
+    if (!rateInput) return;
+    
+    // Check if controls already exist
+    let parent = rateInput.parentNode;
+    let existingWrapper = document.getElementById('rateControlWrapper');
+    if (existingWrapper) return;
+
+    let wrapper = document.createElement('div');
+    wrapper.id = 'rateControlWrapper';
+    wrapper.style.display = 'flex';
+    wrapper.style.alignItems = 'center';
+    wrapper.style.gap = '8px';
+    wrapper.style.marginTop = '5px';
+
+    rateInput.parentNode.insertBefore(wrapper, rateInput.nextSibling);
+    wrapper.appendChild(rateInput);
+
+    // Step selector dropdown (0.1, 0.5, 1, 10)
+    let stepSelect = document.createElement('select');
+    stepSelect.id = 'rateStepSelect';
+    stepSelect.style.padding = '5px';
+    stepSelect.style.background = '#222';
+    stepSelect.style.color = '#fff';
+    stepSelect.style.border = '1px solid #444';
+    stepSelect.innerHTML = `
+        <option value="0.1">Step: 0.1</option>
+        <option value="0.5">Step: 0.5</option>
+        <option value="1" selected>Step: 1.0</option>
+        <option value="5">Step: 5.0</option>
+        <option value="10">Step: 10.0</option>
+    `;
+    wrapper.appendChild(stepSelect);
+
+    // Up Button
+    let upBtn = document.createElement('buttontype'); // styled button
+    let upButton = document.createElement('button');
+    upButton.type = 'button';
+    upButton.innerText = '➕ Up';
+    upButton.style.padding = '5px 10px';
+    upButton.style.background = '#28a745';
+    upButton.style.color = '#fff';
+    upButton.style.border = 'none';
+    upButton.style.cursor = 'pointer';
+    upButton.onclick = function() { adjustRate(1); };
+    wrapper.appendChild(upButton);
+
+    // Down Button
+    let downButton = document.createElement('button');
+    downButton.type = 'button';
+    downButton.innerText = '➖ Down';
+    downButton.style.padding = '5px 10px';
+    downButton.style.background = '#dc3545';
+    downButton.style.color = '#fff';
+    downButton.style.border = 'none';
+    downButton.style.cursor = 'pointer';
+    downButton.onclick = function() { adjustRate(-1); };
+    wrapper.appendChild(downButton);
+}
+
+// Function to increase or decrease rate based on step and auto sync currencies if needed
+function adjustRate(direction) {
+    let rateInput = document.getElementById('itemRate');
+    let stepSelect = document.getElementById('rateStepSelect');
+    let step = parseFloat(stepSelect.value) || 1;
+    let valStr = rateInput.value.trim();
+
+    // Extract numbers if string contains currency signs like $
+    let numMatch = valStr.match(/([\d\.]+)/);
+    if (numMatch) {
+        let currentNum = parseFloat(numMatch[1]);
+        if (!isNaN(currentNum)) {
+            let newNum = currentNum + (direction * step);
+            if (newNum < 0) newNum = 0;
+            // Round to 2 decimal places to avoid floating point bugs
+            newNum = Math.round(newNum * 100) / 100;
+
+            // Preserve currency symbol or format if it had $
+            if (valStr.includes('$')) {
+                rateInput.value = `"$${newNum}"`;
+            } else {
+                rateInput.value = newNum;
+            }
+            logConsole(`Rate adjusted to: ${rateInput.value}`);
+            return;
+        }
+    }
+    // If pure number or empty
+    let currentNum = parseFloat(valStr) || 0;
+    let newNum = Math.max(0, Math.round((currentNum + (direction * step)) * 100) / 100);
+    rateInput.value = newNum;
+    logConsole(`Rate adjusted to: ${newNum}`);
 }
 
 function editItem(sec, item, rate) {
@@ -234,6 +337,8 @@ function editItem(sec, item, rate) {
     document.getElementById('itemName').value = item;
     document.getElementById('itemRate').value = rate;
     document.getElementById('editingOldItem').value = JSON.stringify({sec: sec, item: item});
+    
+    setupRateControls(); // Ensure up/down arrow controls are active
     logConsole(`Editing item: ${item} under ${sec}`);
     window.scrollTo({top: 0, behavior: 'smooth'});
 }
@@ -278,17 +383,14 @@ function saveItem() {
 
     let parsedVal = rateVal;
     if (rateVal !== "") {
-        try {
-            if (rateVal.startsWith('[') && rateVal.endsWith(']')) {
-                parsedVal = JSON.parse(rateVal);
-            } else if (rateVal.startsWith('(') && rateVal.endsWith(')')) {
-                let inner = rateVal.substring(1, rateVal.length - 1);
-                parsedVal = JSON.parse('[' + inner + ']');
-            } else {
-                parsedVal = isNaN(rateVal) ? rateVal.replace(/^["']|["']$/g, '') : Number(rateVal);
-            }
-        } catch (e) {
-            parsedVal = rateVal;
+        if (rateVal.includes(',')) {
+            parsedVal = rateVal.split(',').map(v => {
+                let cleanV = v.trim().replace(/^["']|["']$/g, '');
+                return isNaN(cleanV) ? cleanV : Number(cleanV);
+            });
+        } else {
+            let cleanV = rateVal.replace(/^["']|["']$/g, '');
+            parsedVal = isNaN(cleanV) ? cleanV : Number(cleanV);
         }
     }
 
