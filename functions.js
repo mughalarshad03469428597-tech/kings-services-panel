@@ -2,6 +2,46 @@ let currentData = {};
 let dictName = "DATA";
 let currentFileName = "";
 
+async function askGroqAI(errorMessage) {
+    const apiKey = document.getElementById('userApiKey').value.trim();
+    if (!apiKey) {
+        alert("Pehle upar diye gaye box mein Groq API key enter karein!");
+        return;
+    }
+
+    const url = "https://api.groq.com/openai/v1/chat/completions";
+
+    try {
+        let response = await fetch(url, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${apiKey}`
+            },
+            body: JSON.stringify({
+                model: "llama-3.3-70b-versatile",
+                messages: [
+                    {
+                        role: "system",
+                        content: "You are an expert web developer and debugging assistant. Fix code errors concisely."
+                    },
+                    {
+                        role: "user",
+                        content: `Yeh error ya issue aa raha hai, isay fix karne ka tarika do: ${errorMessage}`
+                    }
+                ]
+            })
+        });
+
+        let data = await response.json();
+        let aiReply = data.choices[0].message.content;
+        console.log("AI Fix Suggestion:", aiReply);
+        alert("AI Assistant Response:\n\n" + aiReply);
+    } catch (error) {
+        console.error("AI API Error:", error);
+    }
+}
+
 async function loadSelectedFile() {
     let filename = document.getElementById('fileSelector').value;
     if (!filename) return;
@@ -42,7 +82,7 @@ async function loadSelectedFile() {
         renderTable();
         alert(filename + " successfully load ho gayi!");
     } catch (e) {
-        alert("Error loading file: " + e.message);
+        askGroqAI(e.message);
     }
 }
 
