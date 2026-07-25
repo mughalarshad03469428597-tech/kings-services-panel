@@ -8,7 +8,7 @@
         h1, h2, h3 { color: #ffffff; }
         .container { max-width: 1100px; margin: auto; background: #1e1e1e; padding: 20px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
         table { width: 100%; border-collapse: collapse; margin-top: 15px; }
-        th, td { padding: 10px; border: 1px solid #333; text-align: left; }
+        th, td { padding: 10px; border: 1px solid #333; text-align: left; vertical-align: middle; }
         th { background: #2c2c2c; }
         input[type="text"], select { padding: 8px; width: 100%; background: #2d2d2d; border: 1px solid #444; color: #fff; border-radius: 4px; box-sizing: border-box; margin-top: 5px; }
         button { padding: 8px 14px; background: #6200ee; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 4px; }
@@ -37,6 +37,7 @@
 
         <div class="box">
             <h3>2. Add / Edit Item</h3>
+            <input type="hidden" id="editingOldItem" value="">
             <div style="margin-bottom: 10px;">
                 <label>Section Name:</label>
                 <select id="secSelect" onchange="handleSectionChange()">
@@ -54,6 +55,7 @@
                 <input type="text" id="itemRate" placeholder="e.g., (10, '$0.04') or '$5.00'">
             </div>
             <button onclick="saveItem()">Save / Update Item Locally</button>
+            <button style="background: #555;" onclick="resetForm()">Cancel Edit</button>
         </div>
 
         <div class="box">
@@ -64,10 +66,10 @@
             <table>
                 <thead>
                     <tr>
-                        <th>Section</th>
-                        <th>Item Name</th>
-                        <th>Rate</th>
-                        <th>Actions</th>
+                        <th style="width: 30%;">Section</th>
+                        <th style="width: 25%;">Item Name</th>
+                        <th style="width: 30%;">Rate</th>
+                        <th style="width: 15%;">Actions</th>
                     </tr>
                 </thead>
                 <tbody id="tableBody">
@@ -107,6 +109,7 @@
 
                 let cleanText = text
                     .replace(/#.*$/gm, '')
+                    .replace(/\b(with|def|return|if|else|for|in)\b[^\n]*\n?/g, '')
                     .replace(/\bdef\s+[a-zA-Z0-9_]+\s*\(.*?\)(\s*->\s*[a-zA-Z0-9_]+)?\s*:/g, '')
                     .replace(/["']{3}[\s\S]*?["']{3}/g, '')
                     .replace(/\bTrue\b/g, 'true')
@@ -116,7 +119,7 @@
                 let words = cleanText.match(/\b[a-zA-Z_][a-zA-Z0-9_]*\b/g) || [];
                 let uniqueWords = [...new Set(words)];
                 let mockVars = "";
-                let reserved = ['true', 'false', 'null', 'return'];
+                let reserved = ['true', 'false', 'null'];
                 for(let w of uniqueWords) {
                     if(!reserved.includes(w)) {
                         mockVars += `let ${w} = "${w}";\n`;
@@ -167,7 +170,6 @@
                     let itemStr = String(item).toLowerCase();
                     let secStr = String(sec).toLowerCase();
 
-                    // Search filter: matches if item or section starts with or contains query
                     if (searchQuery && !itemStr.startsWith(searchQuery) && !secStr.startsWith(searchQuery) && !itemStr.includes(searchQuery) && !secStr.includes(searchQuery)) {
                         continue;
                     }
@@ -211,7 +213,17 @@
 
             document.getElementById('itemName').value = item;
             document.getElementById('itemRate').value = rate;
+            document.getElementById('editingOldItem').value = JSON.stringify({sec: sec, item: item});
             window.scrollTo({top: 0, behavior: 'smooth'});
+        }
+
+        function resetForm() {
+            document.getElementById('secSelect').value = "";
+            document.getElementById('newSecName').value = "";
+            document.getElementById('newSecName').style.display = 'none';
+            document.getElementById('itemName').value = "";
+            document.getElementById('itemRate').value = "";
+            document.getElementById('editingOldItem').value = "";
         }
 
         function saveItem() {
@@ -219,10 +231,22 @@
             let sec = (secSelectVal === 'NEW_SEC' || !secSelectVal) ? document.getElementById('newSecName').value.trim() : secSelectVal;
             let item = document.getElementById('itemName').value.trim();
             let rateVal = document.getElementById('itemRate').value.trim();
+            let editingJson = document.getElementById('editingOldItem').value;
 
             if (!sec || !item) {
                 alert("Section and Item name cannot be empty!");
                 return;
+            }
+
+            // If editing, remove the old entry first so it moves/updates cleanly
+            if (editingJson) {
+                let oldData = JSON.parse(editingJson);
+                if (currentData[oldData.sec] && currentData[oldData.sec][oldData.item] !== undefined) {
+                    delete currentData[oldData.sec][oldData.item];
+                    if (Object.keys(currentData[oldData.sec]).length === 0) {
+                        delete currentData[oldData.sec];
+                    }
+                }
             }
 
             if (!currentData[sec]) {
@@ -249,10 +273,9 @@
             }
 
             updateSectionDropdown();
-            document.getElementById('secSelect').value = sec;
-            document.getElementById('newSecName').style.display = 'none';
+            resetForm();
             renderTable();
-            alert("Item updated locally!");
+            alert("Item saved successfully!");
         }
 
         function deleteItem(sec, item) {
