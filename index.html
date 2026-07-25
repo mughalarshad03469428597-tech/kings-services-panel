@@ -26,7 +26,7 @@
         <div class="box">
             <h3>1. Load Data File</h3>
             <p style="font-size: 13px; color: #bbb;">Apni data file ka poora code yahan paste karein aur Load dabayein:</p>
-            <textarea id="rawInput" rows="6" placeholder="BOSSING_DATA = { ... } ya sirf { ... }"></textarea>
+            <textarea id="rawInput" rows="6" placeholder="BOSSING_RATES = { ... }"></textarea>
             <button onclick="loadData()" style="margin-top: 10px; background: #ff9800; color: #000; font-weight: bold;">Load Data</button>
         </div>
 
@@ -34,15 +34,15 @@
             <h3>2. Add / Edit Item</h3>
             <div style="margin-bottom: 10px;">
                 <label>Section Name:</label>
-                <input type="text" id="secName" placeholder="e.g., Attack">
+                <input type="text" id="secName" placeholder="e.g., Slayer">
             </div>
             <div style="margin-bottom: 10px;">
                 <label>Item Name:</label>
-                <input type="text" id="itemName" placeholder="e.g., 1-99 Attack">
+                <input type="text" id="itemName" placeholder="e.g., Cerberus">
             </div>
             <div style="margin-bottom: 10px;">
                 <label>Rate / Details:</label>
-                <input type="text" id="itemRate" placeholder="e.g., (0, '$0.00')">
+                <input type="text" id="itemRate" placeholder="e.g., (10, '$0.04') or '$5.00'">
             </div>
             <button onclick="saveItem()">Save / Update Item</button>
         </div>
@@ -85,31 +85,25 @@
                     text = match[2];
                 }
 
-                // Safer Python dictionary parser using Function evaluation after syntax conversion
-                let sanitized = text
+                // Custom safe parser for Python dictionaries containing tuples/parentheses
+                let jsFriendly = text
                     .replace(/True/g, 'true')
                     .replace(/False/g, 'false')
                     .replace(/None/g, 'null')
-                    // Convert Python tuples/lists and strings safely for JSON conversion
+                    // Replace Python single quotes with double quotes carefully
                     .replace(/'/g, '"');
 
-                // Quick fix for trailing commas in Python dicts
-                sanitized = sanitized.replace(/,\s*([}\\]])/g, '$1');
+                // Convert tuples (...) to arrays [...] so JSON.parse can read them
+                jsFriendly = jsFriendly.replace(/\(/g, '[').replace(/\)/g, ']');
+                
+                // Remove trailing commas before closing braces/brackets
+                jsFriendly = jsFriendly.replace(/,\s*([}\\]])/g, '$1');
 
-                currentData = JSON.parse(sanitized);
+                currentData = JSON.parse(jsFriendly);
                 renderTable();
                 alert("Data loaded successfully!");
             } catch (e) {
-                // Fallback custom basic loader if JSON parse fails due to quotes inside strings
-                try {
-                    // Alternative regex-based safe parser or eval wrapper
-                    let cleanEval = text.replace(/True/g, 'true').replace(/False/g, 'false').replace(/None/g, 'null');
-                    currentData = (new Function("return " + cleanEval))();
-                    renderTable();
-                    alert("Data loaded successfully!");
-                } catch (err) {
-                    alert("Error parsing data: " + e.message);
-                }
+                alert("Error parsing data: " + e.message);
             }
         }
 
