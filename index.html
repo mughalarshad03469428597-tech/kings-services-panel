@@ -31,7 +31,7 @@
                 <option value="bossing_data.py">bossing_data.py</option>
                 <option value="leveling_data.py">leveling_data.py</option>
                 <option value="minigames_data.py">minigames_data.py</option>
-                <option value="quest_panel.py">quest_panel.py</option>
+                <option value="quests_data.py">quests_data.py</option>
             </select>
         </div>
 
@@ -92,16 +92,19 @@
                 if (!response.ok) throw new Error("File load nahi ho saki!");
                 let text = await response.text();
 
-                let match = text.match(/^([a-zA-Z0-9_]+)\s*=\s*(\{[\s\S]*\})$/);
+                // Remove Python comments (# ...) so they don't cause parsing errors
+                text = text.replace(/#.*$/gm, '');
+
+                let match = text.match(/([a-zA-Z0-9_]+)\s*=\s*(\{[\s\S]*\})/);
                 if (match) {
                     dictName = match[1];
                     text = match[2];
                 }
 
                 let jsFriendly = text
-                    .replace(/True/g, 'true')
-                    .replace(/False/g, 'false')
-                    .replace(/None/g, 'null')
+                    .replace(/\bTrue\b/g, 'true')
+                    .replace(/\bFalse\b/g, 'false')
+                    .replace(/\bNone\b/g, 'null')
                     .replace(/'/g, '"')
                     .replace(/\(/g, '[')
                     .replace(/\)/g, ']');
