@@ -2,14 +2,48 @@ let currentData = {};
 let dictName = "DATA";
 let currentFileName = "";
 
-async function askGroqAI(errorMessage) {
-    const apiKey = document.getElementById('userApiKey').value.trim();
-    if (!apiKey) return;
+function logConsole(message) {
+    let consoleBox = document.getElementById('liveConsole');
+    if (consoleBox) {
+        let time = new Date().toLocaleTimeString();
+        consoleBox.innerHTML += `[${time}] ${message}<br>`;
+        consoleBox.scrollTop = consoleBox.scrollHeight;
+    }
+}
 
-    const url = "https://api.groq.com/openai/v1/chat/completions";
+function clearConsole() {
+    document.getElementById('liveConsole.innerHTML = ""';
+    document.getElementById('liveConsole').innerHTML = "[System] Console cleared.<br>";
+}
+
+// Override standard clicks to log into console
+document.addEventListener('click', function(event) {
+    let target = event.target;
+    if (target.tagName === 'BUTTON' || target.tagName === 'INPUT' || target.tagName === 'SELECT') {
+        let name = target.id || target.innerText || target.placeholder || target.tagName;
+        logConsole(`Clicked on element: <span style="color:#03dac6;">${name}</span>`);
+    }
+});
+
+async function sendChatMessage() {
+    let inputField = document.getElementById('chatInput');
+    let userMsg = inputField.value.trim();
+    if (!userMsg) return;
+
+    let chatHistory = document.getElementById('chatHistory');
+    chatHistory.innerHTML += `<div style="margin-bottom: 8px; color: #fff;"><b>Aap:</b> ${userMsg}</div>`;
+    inputField.value = "";
+    chatHistory.scrollTop = chatHistory.scrollHeight;
+
+    logConsole(`User sent chat query: ${userMsg}`);
+    let apiKey = document.getElementById('userApiKey').value.trim();
+    if (!apiKey) {
+        alert("Pehle API key enter karein!");
+        return;
+    }
 
     try {
-        let response = await fetch(url, {
+        let response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -18,31 +52,38 @@ async function askGroqAI(errorMessage) {
             body: JSON.stringify({
                 model: "llama-3.3-70b-versatile",
                 messages: [
-                    {
-                        role: "system",
-                        content: "You are an expert web developer and debugging assistant. Fix code errors concisely."
-                    },
-                    {
-                        role: "user",
-                        content: `JavaScript error while fetching data file: ${errorMessage}. Give a direct fix.`
-                    }
+                    { role: "system", content: "You are a helpful web assistant." },
+                    { role: "user", content: userMsg }
                 ]
             })
         });
 
         let data = await response.json();
-        if(data.choices && data.choices[0]) {
-            console.log("AI Fix Suggestion:", data.choices[0].message.content);
-        }
-    } catch (error) {
-        console.error("AI API Error:", error);
+        let reply = data.choices[0].message.content;
+
+        chatHistory.innerHTML += `<div style="margin-bottom: 8px; color: #03dac6; background: #1a1a1a; padding: 6px; border-radius: 4px;">
+            <b>AI:</b> <span class="ai-reply-text">${reply}</span><br>
+            <button style="margin-top: 5px; font-size: 10px; padding: 2px 6px; background: #444;" onclick="copyText(this)">Copy Text</button>
+        </div>`;
+        chatHistory.scrollTop = chatHistory.scrollHeight;
+        logConsole("AI responded successfully.");
+    } catch (err) {
+        logConsole(`Chat Error: ${err.message}`);
     }
+}
+
+function copyText(btn) {
+    let textToCopy = btn.previousElementSibling.previousElementSibling.innerText;
+    navigator.clipboard.writeText(textToCopy);
+    alert("Text copied to clipboard!");
+    logConsole("Copied AI response text.");
 }
 
 async function loadSelectedFile() {
     let filename = document.getElementById('fileSelector').value;
     if (!filename) return;
     currentFileName = filename;
+    logConsole(`Loading file: ${filename}`);
 
     try {
         let response = await fetch(filename + "?t=" + new Date().getTime());
@@ -54,7 +95,6 @@ async function loadSelectedFile() {
             dictName = match[1];
             text = match[2];
         } else {
-            // Fallback if assignment format differs
             let firstBrace = text.indexOf('{');
             let lastBrace = text.lastIndexOf('}');
             if (firstBrace !== -1 && lastBrace !== -1) {
@@ -69,21 +109,19 @@ async function loadSelectedFile() {
             .replace(/\bFalse\b/g, 'false')
             .replace(/\bNone\b/g, 'null');
 
-        // Safe evaluation for python dictionary format converted to JS object
         try {
             currentData = (new Function("return " + cleanText))();
         } catch (evalErr) {
-            // Secondary cleanup if eval fails
             let looserText = cleanText.replace(/'/g, '"');
             currentData = JSON.parse(looserText);
         }
 
         updateSectionDropdown();
         renderTable();
+        logConsole(`Successfully loaded and parsed ${filename}`);
         alert(filename + " successfully load ho gayi!");
     } catch (e) {
-        console.error(e);
-        askGroqAI(e.message);
+        logConsole(`Error loading file: ${e.message}`);
         alert("Error loading file: " + e.message);
     }
 }
@@ -167,6 +205,7 @@ function editItem(sec, item, rate) {
     document.getElementById('itemName').value = item;
     document.getElementById('itemRate').value = rate;
     document.getElementById('editingOldItem').value = JSON.stringify({sec: sec, item: item});
+    logConsole(`Editing item: ${item} under ${sec}`);
     window.scrollTo({top: 0, behavior: 'smooth'});
 }
 
@@ -177,6 +216,7 @@ function resetForm() {
     document.getElementById('itemName').value = "";
     document.getElementById('itemRate').value = "";
     document.getElementById('editingOldItem').value = "";
+    logConsole("Form reset.");
 }
 
 function saveItem() {
@@ -227,6 +267,7 @@ function saveItem() {
     updateSectionDropdown();
     resetForm();
     renderTable();
+    logConsole(`Saved item: ${item} in section: ${sec}`);
     alert("Item saved successfully!");
 }
 
@@ -238,6 +279,7 @@ function deleteItem(sec, item) {
         }
         updateSectionDropdown();
         renderTable();
+        logConsole(`Deleted item: ${item} from ${sec}`);
     }
 }
 
@@ -264,4 +306,5 @@ function generateCode() {
     }
     output += "}\n";
     document.getElementById('rawOutput').value = output;
+    logConsole("Generated updated Python code.");
 }
