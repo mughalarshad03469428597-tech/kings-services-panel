@@ -12,8 +12,10 @@ function logConsole(message) {
 }
 
 function clearConsole() {
-    document.getElementById('liveConsole.innerHTML = ""';
-    document.getElementById('liveConsole').innerHTML = "[System] Console cleared.<br>";
+    let consoleBox = document.getElementById('liveConsole');
+    if (consoleBox) {
+        consoleBox.innerHTML = "[System] Console cleared.<br>";
+    }
 }
 
 // Override standard clicks to log into console
