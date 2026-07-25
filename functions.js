@@ -109,7 +109,12 @@ async function loadSelectedFile() {
             }
         }
 
-        let convertedText = text.replace(/\(/g, '[').replace(/\)/g, ']');
+        let sanitizedText = text
+            .replace(/calc_usd\s*\(\s*([\d\.]+)\s*\)/g, '$1')
+            .replace(/calc_usd\s*\[\s*\d+\s*\]/g, '0')
+            .replace(/[a-zA-Z_][a-zA-Z0-9_]*\s*\[\s*\d+\s*\]/g, '0');
+
+        let convertedText = sanitizedText.replace(/\(/g, '[').replace(/\)/g, ']');
 
         let cleanText = convertedText
             .replace(/#.*$/gm, '')
@@ -137,6 +142,7 @@ async function loadSelectedFile() {
 
 function updateSectionDropdown() {
     let secSelect = document.getElementById('secSelect');
+    if (!secSelect) return;
     secSelect.innerHTML = `<option value="">-- Select or Add Section --</option><option value="NEW_SEC">➕ Add New Section...</option>`;
     for (let sec in currentData) {
         let opt = document.createElement('option');
@@ -161,6 +167,7 @@ function handleSectionChange() {
 
 function renderTable() {
     let tbody = document.getElementById('tableBody');
+    if (!tbody) return;
     let searchQuery = document.getElementById('searchBox').value.toLowerCase().trim();
     tbody.innerHTML = "";
     let hasData = false;
@@ -181,6 +188,27 @@ function renderTable() {
                             <td>
                                 <button class="edit-btn" onclick="editItem('${sec.replace(/'/g, "\\'")}', '', \`${valStr}\`)">Edit</button>
                                 <button class="delete-btn" onclick="deleteItem('${sec.replace(/'/g, "\\'")}', '')">Delete</button>
+                            </td>`;
+            tbody.appendChild(tr);
+            continue;
+        }
+
+        let keys = Object.keys(secContent);
+        let isTupleFormat = keys.length > 0 && keys.every((k, index) => String(k) === String(index));
+
+        if (isTupleFormat) {
+            let details = keys.map(k => secContent[k]).join(', ');
+            if (searchQuery && !sec.toLowerCase().includes(searchQuery) && !details.toLowerCase().includes(searchQuery)) {
+                continue;
+            }
+            hasData = true;
+            let tr = document.createElement('tr');
+            tr.innerHTML = `<td><b>${sec}</b></td>
+                            <td>-</td>
+                            <td>(${details})</td>
+                            <td>
+                                <button class="edit-btn" onclick="editItem('${sec.replace(/'/g, "\\'")}', '0', \`${details}\`)">Edit</button>
+                                <button class="delete-btn" onclick="deleteItem('${sec.replace(/'/g, "\\'")}', '0')">Delete</button>
                             </td>`;
             tbody.appendChild(tr);
             continue;
@@ -327,7 +355,7 @@ function editItem(sec, item, rate) {
         newSecInput.value = sec;
     }
 
-    document.getElementById('itemName').value = item;
+    document.getElementById('itemName').value = item === '0' ? '' : item;
     let rateInput = document.getElementById('itemRate');
     rateInput.value = rate;
     document.getElementById('editingOldItem').value = JSON.stringify({sec: sec, item: item});
@@ -406,7 +434,7 @@ function saveItem() {
 
 function deleteItem(sec, item) {
     if (confirm(`Are you sure you want to delete?`)) {
-        if (item !== "") {
+        if (item !== "" && item !== '0') {
             delete currentData[sec][item];
             if (Object.keys(currentData[sec]).length === 0) {
                 delete currentData[sec];
@@ -428,23 +456,45 @@ function generateCode() {
             let valStr = typeof secContent === 'string' ? `'${secContent}'` : secContent;
             output += `    '${sec}': ${valStr},\n`;
         } else {
-            output += `    '${sec}': {\n`;
-            for (let item in secContent) {
-                let val = secContent[item];
-                let valStr = "";
-                if (val === "" || val === null || val === undefined) {
-                    valStr = "''";
-                } else if (Array.isArray(val)) {
-                    let innerVals = val.map(v => typeof v === 'string' ? `'${v}'` : v).join(', ');
-                    valStr = `(${innerVals})`;
-                } else if (typeof val === 'string') {
-                    valStr = `'${val}'`;
-                } else {
-                    valStr = val;
+            let keys = Object.keys(secContent);
+            let isTupleFormat = keys.length > 0 && keys.every((k, index) => String(k) === String(index));
+
+            if (isTupleFormat) {
+                let innerItems = [];
+                for (let i = 0; i < keys.length; i++) {
+                    let val = secContent[keys[i]];
+                    if (val === "" || val === null || val === undefined) {
+                        innerItems.push("''");
+                    } else if (typeof val === 'string') {
+                        if ((val.startsWith("'") && val.endsWith("'")) || (val.startsWith('"') && val.endsWith('"'))) {
+                            innerItems.push(val);
+                        } else {
+                            innerItems.push(`'${val}'`);
+                        }
+                    } else {
+                        innerItems.push(val);
+                    }
                 }
-                output += `        '${item}': ${valStr},\n`;
+                output += `    '${sec}': (${innerItems.join(', ')}),\n`;
+            } else {
+                output += `    '${sec}': {\n`;
+                for (let item in secContent) {
+                    let val = secContent[item];
+                    let valStr = "";
+                    if (val === "" || val === null || val === undefined) {
+                        valStr = "''";
+                    } else if (Array.isArray(val)) {
+                        let innerVals = val.map(v => typeof v === 'string' ? `'${v}'` : v).join(', ');
+                        valStr = `(${innerVals})`;
+                    } else if (typeof val === 'string') {
+                        valStr = `'${val}'`;
+                    } else {
+                        valStr = val;
+                    }
+                    output += `        '${item}': ${valStr},\n`;
+                }
+                output += `    },\n`;
             }
-            output += `    },\n`;
         }
     }
     output += "}\n";
