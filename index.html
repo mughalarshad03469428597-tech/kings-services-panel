@@ -12,13 +12,25 @@
         <!-- AI API Key Box -->
         <div class="box" style="border: 1px solid #6200ee;">
             <h3>🔑 Groq AI Assistant Setup</h3>
-            <p style="font-size: 13px; color: #bbb;">Yahan apni Groq API key (gsk_...) paste karein taake AI errors fix kar sake:</p>
+            <p style="font-size: 13px; color: #bbb;">Yahan apni Groq API key (gsk_...) paste karein:</p>
             <input type="password" id="userApiKey" placeholder="Paste your gsk_... key here" value="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">
+        </div>
+
+        <!-- AI Chat Section -->
+        <div class="box" style="border: 1px solid #03dac6;">
+            <h3>💬 AI Chat & Debugger Assistant</h3>
+            <p style="font-size: 13px; color: #bbb;">AI se kuch bhi poochein ya error fix karwayein:</p>
+            <div id="chatHistory" style="background: #121212; height: 150px; overflow-y: auto; padding: 10px; border-radius: 4px; border: 1px solid #444; margin-bottom: 10px; font-size: 14px;">
+                <div style="color: #888;">AI Chatbox ready hai. Sawal poochein...</div>
+            </div>
+            <div style="display: flex; gap: 5px;">
+                <input type="text" id="chatInput" placeholder="Type your question or error here..." style="margin-top: 0;">
+                <button onclick="sendChatMessage()">Send</button>
+            </div>
         </div>
 
         <div class="box">
             <h3>1. Select Data File</h3>
-            <p style="font-size: 13px; color: #bbb;">Apni file select karein taake data load ho jaye:</p>
             <select id="fileSelector" onchange="loadSelectedFile()">
                 <option value="">-- Choose File --</option>
                 <option value="bossing_data.py">bossing_data.py</option>
@@ -44,7 +56,7 @@
                 <input type="text" id="itemName" placeholder="e.g., Cerberus or 0">
             </div>
             <div style="margin-bottom: 10px;">
-                <label>Rate / Details (Blank chhor dein agar baad mein dalna ho):</label>
+                <label>Rate / Details:</label>
                 <input type="text" id="itemRate" placeholder="e.g., (10, '$0.04') or '$5.00'">
             </div>
             <button onclick="saveItem()">Save / Update Item Locally</button>
@@ -54,7 +66,7 @@
         <div class="box">
             <h3>3. Current Items & Search</h3>
             <div style="margin-bottom: 10px;">
-                <input type="text" id="searchBox" placeholder="🔍 Search item or section (e.g. des, agility)..." oninput="renderTable()">
+                <input type="text" id="searchBox" placeholder="🔍 Search item or section..." oninput="renderTable()">
             </div>
             <table>
                 <thead>
@@ -73,9 +85,18 @@
 
         <div class="box" style="border: 1px solid #4caf50;">
             <h3>4. Export Updated Code</h3>
-            <p style="font-size: 13px; color: #bbb;">Changes karne ke baad neeche generate button dabayein, phir code copy karke GitHub par apni file mein paste kar dein:</p>
             <button class="save-file-btn" onclick="generateCode()">Generate Updated Code</button>
             <textarea id="rawOutput" rows="8" placeholder="Updated code will appear here..." style="width:100%; margin-top: 10px; background: #2d2d2d; color: #fff; border: 1px solid #444; padding:8px; border-radius:4px;" readonly></textarea>
+        </div>
+
+        <!-- Live Console Box -->
+        <div class="box" style="border: 1px solid #ff9800; background: #1a1a1a;">
+            <h3>🖥️ Live Console Log</h3>
+            <p style="font-size: 12px; color: #888;">Website ki har activity yahan show hogi:</p>
+            <div id="liveConsole" style="background: #000; color: #00ff00; font-family: monospace; height: 120px; overflow-y: auto; padding: 8px; font-size: 12px; border-radius: 4px; border: 1px solid #333;">
+                [System] Console initialized successfully...<br>
+            </div>
+            <button style="margin-top: 8px; background: #b00020; font-size: 11px; padding: 4px 8px;" onclick="clearConsole()">Clear Console</button>
         </div>
     </div>
 
