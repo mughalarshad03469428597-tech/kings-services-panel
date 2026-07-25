@@ -57,7 +57,10 @@
         </div>
 
         <div class="box">
-            <h3>3. Current Items</h3>
+            <h3>3. Current Items & Search</h3>
+            <div style="margin-bottom: 10px;">
+                <input type="text" id="searchBox" placeholder="🔍 Search item or section (e.g. des, agility)..." oninput="renderTable()">
+            </div>
             <table>
                 <thead>
                     <tr>
@@ -102,14 +105,14 @@
                     text = match[2];
                 }
 
-                // Handle external python variables/functions like calc_usd safely by mocking them
                 let cleanText = text
                     .replace(/#.*$/gm, '')
+                    .replace(/\bdef\s+[a-zA-Z0-9_]+\s*\(.*?\)(\s*->\s*[a-zA-Z0-9_]+)?\s*:/g, '')
+                    .replace(/["']{3}[\s\S]*?["']{3}/g, '')
                     .replace(/\bTrue\b/g, 'true')
                     .replace(/\bFalse\b/g, 'false')
                     .replace(/\bNone\b/g, 'null');
 
-                // Create dummy variables for any unquoted words (like calc_usd) to prevent JS reference errors
                 let words = cleanText.match(/\b[a-zA-Z_][a-zA-Z0-9_]*\b/g) || [];
                 let uniqueWords = [...new Set(words)];
                 let mockVars = "";
@@ -155,11 +158,20 @@
 
         function renderTable() {
             let tbody = document.getElementById('tableBody');
+            let searchQuery = document.getElementById('searchBox').value.toLowerCase().trim();
             tbody.innerHTML = "";
             let hasData = false;
 
             for (let sec in currentData) {
                 for (let item in currentData[sec]) {
+                    let itemStr = String(item).toLowerCase();
+                    let secStr = String(sec).toLowerCase();
+
+                    // Search filter: matches if item or section starts with or contains query
+                    if (searchQuery && !itemStr.startsWith(searchQuery) && !secStr.startsWith(searchQuery) && !itemStr.includes(searchQuery) && !secStr.includes(searchQuery)) {
+                        continue;
+                    }
+
                     hasData = true;
                     let val = currentData[sec][item];
                     let displayRate = "";
@@ -179,7 +191,7 @@
                 }
             }
             if (!hasData) {
-                tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:#ff6b6b;">No items found.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:#ff6b6b;">No matching items found.</td></tr>`;
             }
         }
 
