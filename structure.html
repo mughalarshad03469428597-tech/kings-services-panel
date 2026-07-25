@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>King's Services - Multi-File Admin Panel</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>👑 King's Services - Multi-File Panel</h1>
+        
+        <div class="box">
+            <h3>1. Select Data File</h3>
+            <p style="font-size: 13px; color: #bbb;">Apni file select karein taake data load ho jaye:</p>
+            <select id="fileSelector" onchange="loadSelectedFile()">
+                <option value="">-- Choose File --</option>
+                <option value="bossing_data.py">bossing_data.py</option>
+                <option value="leveling_data.py">leveling_data.py</option>
+                <option value="minigames_data.py">minigames_data.py</option>
+                <option value="quests_data.py">quests_data.py</option>
+            </select>
+        </div>
+
+        <div class="box">
+            <h3>2. Add / Edit Item</h3>
+            <input type="hidden" id="editingOldItem" value="">
+            <div style="margin-bottom: 10px;">
+                <label>Section Name:</label>
+                <select id="secSelect" onchange="handleSectionChange()">
+                    <option value="">-- Select or Add Section --</option>
+                    <option value="NEW_SEC">➕ Add New Section...</option>
+                </select>
+                <input type="text" id="newSecName" placeholder="Enter new section name..." style="display:none; margin-top:5px;">
+            </div>
+            <div style="margin-bottom: 10px;">
+                <label>Item Name:</label>
+                <input type="text" id="itemName" placeholder="e.g., Cerberus or 0">
+            </div>
+            <div style="margin-bottom: 10px;">
+                <label>Rate / Details (Blank chhor dein agar baad mein dalna ho):</label>
+                <input type="text" id="itemRate" placeholder="e.g., (10, '$0.04') or '$5.00'">
+            </div>
+            <button onclick="saveItem()">Save / Update Item Locally</button>
+            <button style="background: #555;" onclick="resetForm()">Cancel Edit</button>
+        </div>
+
+        <div class="box">
+            <h3>3. Current Items & Search</h3>
+            <div style="margin-bottom: 10px;">
+                <input type="text" id="searchBox" placeholder="🔍 Search item or section (e.g. des, agility)..." oninput="renderTable()">
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 30%;">Section</th>
+                        <th style="width: 25%;">Item Name</th>
+                        <th style="width: 30%;">Rate</th>
+                        <th style="width: 15%;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+                    <tr><td colspan="4" style="text-align:center; color:#ff6b6b;">Please select a file above.</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="box" style="border: 1px solid #4caf50;">
+            <h3>4. Export Updated Code</h3>
+            <p style="font-size: 13px; color: #bbb;">Changes karne ke baad neeche generate button dabayein, phir code copy karke GitHub par apni file mein paste kar dein:</p>
+            <button class="save-file-btn" onclick="generateCode()">Generate Updated Code</button>
+            <textarea id="rawOutput" rows="8" placeholder="Updated code will appear here..." style="width:100%; margin-top: 10px; background: #2d2d2d; color: #fff; border: 1px solid #444; padding:8px; border-radius:4px;" readonly></textarea>
+        </div>
+    </div>
+
+    <script src="functions.js"></script>
+</body>
+</html>
