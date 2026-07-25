@@ -4,10 +4,7 @@ let currentFileName = "";
 
 async function askGroqAI(errorMessage) {
     const apiKey = document.getElementById('userApiKey').value.trim();
-    if (!apiKey) {
-        alert("Pehle upar diye gaye box mein Groq API key enter karein!");
-        return;
-    }
+    if (!apiKey) return;
 
     const url = "https://api.groq.com/openai/v1/chat/completions";
 
@@ -27,16 +24,16 @@ async function askGroqAI(errorMessage) {
                     },
                     {
                         role: "user",
-                        content: `Yeh error ya issue aa raha hai, isay fix karne ka tarika do: ${errorMessage}`
+                        content: `JavaScript error while fetching data file: ${errorMessage}. Give a direct fix.`
                     }
                 ]
             })
         });
 
         let data = await response.json();
-        let aiReply = data.choices[0].message.content;
-        console.log("AI Fix Suggestion:", aiReply);
-        alert("AI Assistant Response:\n\n" + aiReply);
+        if(data.choices && data.choices[0]) {
+            console.log("AI Fix Suggestion:", data.choices[0].message.content);
+        }
     } catch (error) {
         console.error("AI API Error:", error);
     }
@@ -49,40 +46,45 @@ async function loadSelectedFile() {
 
     try {
         let response = await fetch(filename + "?t=" + new Date().getTime());
-        if (!response.ok) throw new Error("File load nahi ho saki!");
+        if (!response.ok) throw new Error("File load nahi ho saki! HTTP status: " + response.status);
         let text = await response.text();
 
         let match = text.match(/([a-zA-Z0-9_]+)\s*=\s*(\{[\s\S]*\})/);
         if (match) {
             dictName = match[1];
             text = match[2];
+        } else {
+            // Fallback if assignment format differs
+            let firstBrace = text.indexOf('{');
+            let lastBrace = text.lastIndexOf('}');
+            if (firstBrace !== -1 && lastBrace !== -1) {
+                text = text.substring(firstBrace, lastBrace + 1);
+            }
         }
 
         let cleanText = text
             .replace(/#.*$/gm, '')
-            .replace(/\b(with|def|return|if|else|for|in)\b[^\n]*\n?/g, '')
-            .replace(/\bdef\s+[a-zA-Z0-9_]+\s*\(.*?\)(\s*->\s*[a-zA-Z0-9_]+)?\s*:/g, '')
             .replace(/["']{3}[\s\S]*?["']{3}/g, '')
             .replace(/\bTrue\b/g, 'true')
             .replace(/\bFalse\b/g, 'false')
             .replace(/\bNone\b/g, 'null');
 
-        let words = cleanText.match(/\b[a-zA-Z_][a-zA-Z0-9_]*\b/g) || [];
-        let uniqueWords = [...new Set(words)];
-        let mockVars = "";
-        let reserved = ['true', 'false', 'null'];
-        for(let w of uniqueWords) {
-            if(!reserved.includes(w)) {
-                mockVars += `let ${w} = "${w}";\n`;
-            }
+        // Safe evaluation for python dictionary format converted to JS object
+        try {
+            currentData = (new Function("return " + cleanText))();
+        } catch (evalErr) {
+            // Secondary cleanup if eval fails
+            let looserText = cleanText.replace(/'/g, '"');
+            currentData = JSON.parse(looserText);
         }
 
-        currentData = (new Function(mockVars + "return " + cleanText))();
         updateSectionDropdown();
         renderTable();
         alert(filename + " successfully load ho gayi!");
     } catch (e) {
+        console.error(e);
         askGroqAI(e.message);
+        alert("Error loading file: " + e.message);
     }
 }
 
@@ -121,7 +123,7 @@ function renderTable() {
             let itemStr = String(item).toLowerCase();
             let secStr = String(sec).toLowerCase();
 
-            if (searchQuery && !itemStr.startsWith(searchQuery) && !secStr.startsWith(searchQuery) && !itemStr.includes(searchQuery) && !secStr.includes(searchQuery)) {
+            if (searchQuery && !itemStr.includes(searchQuery) && !secStr.includes(searchQuery)) {
                 continue;
             }
 
