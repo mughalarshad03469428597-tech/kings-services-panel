@@ -1,12 +1,3 @@
-# leveling_data.py - THE COMPLETE 23 SKILLS PROFESSIONAL VERSION
-
-PRICE_MULTIPLIER = 1.0
-USD_RATE = 280
-
-def calc_usd(pkr: float) -> float:
-    """Return USD value as float for safe math operations."""
-    return pkr / USD_RATE
-
 LEVELING_RATES = {
     # 🏃 01. AGILITY
     "01. Agility 1-50": (1500, calc_usd(1500), "🏃 Fast starter courses | Full Graceful focus"),
