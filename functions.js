@@ -1,7 +1,7 @@
 /* ==========================================
    Project: Multi-File Admin Panel
    File: functions.js
-   Version: 0.3
+   Version: 0.5
    ========================================== */
 
 let currentData = {};
@@ -224,13 +224,13 @@ function renderTable() {
     }
 }
 
-// Helper function to inject Stepper / Arrow controls next to Rate field dynamically
 function setupRateControls() {
     let rateInput = document.getElementById('itemRate');
     if (!rateInput) return;
     
-    // Check if controls already exist
-    let parent = rateInput.parentNode;
+    rateInput.readOnly = false;
+    rateInput.style.pointerEvents = 'auto';
+
     let existingWrapper = document.getElementById('rateControlWrapper');
     if (existingWrapper) return;
 
@@ -244,7 +244,6 @@ function setupRateControls() {
     rateInput.parentNode.insertBefore(wrapper, rateInput.nextSibling);
     wrapper.appendChild(rateInput);
 
-    // Step selector dropdown (0.1, 0.5, 1, 10)
     let stepSelect = document.createElement('select');
     stepSelect.id = 'rateStepSelect';
     stepSelect.style.padding = '5px';
@@ -252,16 +251,14 @@ function setupRateControls() {
     stepSelect.style.color = '#fff';
     stepSelect.style.border = '1px solid #444';
     stepSelect.innerHTML = `
-        <option value="0.1">Step: 0.1</option>
+        <option value="0.1" selected>Step: 0.1</option>
         <option value="0.5">Step: 0.5</option>
-        <option value="1" selected>Step: 1.0</option>
+        <option value="1">Step: 1.0</option>
         <option value="5">Step: 5.0</option>
         <option value="10">Step: 10.0</option>
     `;
     wrapper.appendChild(stepSelect);
 
-    // Up Button
-    let upBtn = document.createElement('buttontype'); // styled button
     let upButton = document.createElement('button');
     upButton.type = 'button';
     upButton.innerText = '➕ Up';
@@ -273,7 +270,6 @@ function setupRateControls() {
     upButton.onclick = function() { adjustRate(1); };
     wrapper.appendChild(upButton);
 
-    // Down Button
     let downButton = document.createElement('button');
     downButton.type = 'button';
     downButton.innerText = '➖ Down';
@@ -286,26 +282,23 @@ function setupRateControls() {
     wrapper.appendChild(downButton);
 }
 
-// Function to increase or decrease rate based on step and auto sync currencies if needed
 function adjustRate(direction) {
     let rateInput = document.getElementById('itemRate');
     let stepSelect = document.getElementById('rateStepSelect');
-    let step = parseFloat(stepSelect.value) || 1;
+    let step = parseFloat(stepSelect.value) || 0.1;
     let valStr = rateInput.value.trim();
 
-    // Extract numbers if string contains currency signs like $
     let numMatch = valStr.match(/([\d\.]+)/);
     if (numMatch) {
         let currentNum = parseFloat(numMatch[1]);
         if (!isNaN(currentNum)) {
             let newNum = currentNum + (direction * step);
             if (newNum < 0) newNum = 0;
-            // Round to 2 decimal places to avoid floating point bugs
             newNum = Math.round(newNum * 100) / 100;
 
-            // Preserve currency symbol or format if it had $
-            if (valStr.includes('$')) {
-                rateInput.value = `"$${newNum}"`;
+            if (valStr.includes(',')) {
+                let parts = valStr.split(',');
+                rateInput.value = `${parts[0].trim()}, '${newNum}'`;
             } else {
                 rateInput.value = newNum;
             }
@@ -313,7 +306,7 @@ function adjustRate(direction) {
             return;
         }
     }
-    // If pure number or empty
+    
     let currentNum = parseFloat(valStr) || 0;
     let newNum = Math.max(0, Math.round((currentNum + (direction * step)) * 100) / 100);
     rateInput.value = newNum;
@@ -335,10 +328,11 @@ function editItem(sec, item, rate) {
     }
 
     document.getElementById('itemName').value = item;
-    document.getElementById('itemRate').value = rate;
+    let rateInput = document.getElementById('itemRate');
+    rateInput.value = rate;
     document.getElementById('editingOldItem').value = JSON.stringify({sec: sec, item: item});
     
-    setupRateControls(); // Ensure up/down arrow controls are active
+    setupRateControls();
     logConsole(`Editing item: ${item} under ${sec}`);
     window.scrollTo({top: 0, behavior: 'smooth'});
 }
